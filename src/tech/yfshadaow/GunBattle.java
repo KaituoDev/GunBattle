@@ -18,7 +18,7 @@ public class GunBattle extends JavaPlugin {
     public void onEnable() {
         this.world = Bukkit.getWorld("world");
         this.players = new ArrayList<>();
-        Game game = new Game(this);
+        GunBattleGame game = new GunBattleGame(this);
         game.runTask(this);
     }
 

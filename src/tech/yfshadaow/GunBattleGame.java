@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Predicate;
 
-public class Game extends BukkitRunnable implements Listener {
+public class GunBattleGame extends BukkitRunnable implements Listener {
     World world;
     GunBattle plugin;
     List<Player> players;
@@ -52,7 +52,7 @@ public class Game extends BukkitRunnable implements Listener {
     ItemStack arrow;
     ItemStack firework_star;
 
-    public Game(GunBattle plugin) {
+    public GunBattleGame(GunBattle plugin) {
         this.plugin = plugin;
         this.players = plugin.players;
         this.world = Bukkit.getWorld("world");
