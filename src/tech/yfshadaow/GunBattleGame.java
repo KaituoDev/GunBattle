@@ -7,7 +7,6 @@ import com.comphenix.protocol.events.PacketContainer;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
-import org.bukkit.craftbukkit.v1_16_R3.CraftWorld;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -24,11 +23,7 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import java.net.http.WebSocket;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class GunBattleGame extends BukkitRunnable implements Listener {
@@ -235,7 +230,10 @@ public class GunBattleGame extends BukkitRunnable implements Listener {
             Projectile projectile = p.launchProjectile(Arrow.class,p.getEyeLocation().getDirection());
             projectile.setSilent(true);
             PacketContainer removeArrow = pm.createPacket(PacketType.Play.Server.ENTITY_DESTROY);
-            removeArrow.getIntegerArrays().write(0,new int[] {projectile.getEntityId()});
+            List<Integer> idList = new ArrayList<>();
+            idList.add(projectile.getEntityId());
+            removeArrow.getIntLists().write(0,idList);
+            //removeArrow.getIntegerArrays().write(0,new int[] {projectile.getEntityId()});
             try {
                 pm.sendServerPacket(p,removeArrow);
             } catch (Exception e) {
@@ -410,7 +408,7 @@ public class GunBattleGame extends BukkitRunnable implements Listener {
         }
     }
     @EventHandler
-    public void resistKnockback(EntityDamageEvent ede) {
+    public void resistKnockbackAndRemoveDamageCoolDown(EntityDamageEvent ede) {
         if (!(players.contains(ede.getEntity()))) {
             return;
         }
@@ -566,9 +564,11 @@ public class GunBattleGame extends BukkitRunnable implements Listener {
         } else if (x == -3 && y == 58 && z == 1989) {
             players.add(pie.getPlayer());
             pie.getPlayer().setScoreboard(gunBattle);
+            pie.getPlayer().setMaximumNoDamageTicks(0);
         } else if (x == 2 && y == 58 && z == 1994) {
             players.add(pie.getPlayer());
             pie.getPlayer().setScoreboard(gunBattle);
+            pie.getPlayer().setMaximumNoDamageTicks(0);
         }
     }
     public void removeItem(Player p, Material material, int number) {
@@ -587,8 +587,8 @@ public class GunBattleGame extends BukkitRunnable implements Listener {
     }
 
     public long getTime() {
-        return ((CraftWorld)world).getHandle().worldData.getTime();
-    }
+        return (world.getGameTime());
+    };
 
     @Override
     public void run() {
