@@ -46,7 +46,7 @@ public class GunBattleGame extends Game implements Listener {
     HashMap<Player, Vector> tempVector;
     ItemStack arrow;
     ItemStack firework_star;
-    private final ProtocolManager pm;
+    ProtocolManager pm;
 
     private GunBattleGame(GunBattle plugin) {
         this.plugin = plugin;
@@ -55,7 +55,6 @@ public class GunBattleGame extends Game implements Listener {
         scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
         gunBattle.registerNewObjective("gunBattle", "dummy", "枪械乱斗击败榜");
         gunBattle.getObjective("gunBattle").setDisplaySlot(DisplaySlot.SIDEBAR);
-        pm = ProtocolLibrary.getProtocolManager();
         timeMap = new HashMap<>();
         isReloaded = new HashMap<>();
         remainingAmmo = new HashMap<>();
@@ -83,8 +82,11 @@ public class GunBattleGame extends Game implements Listener {
                 tempVector.put(p, currentLoc);
             }
         }, 1, 1);
-        initGame(plugin, "GunBattle", 0, null, null, null,
+        initGame(plugin, "GunBattle","§a枪械乱斗", 0, null, null, null,
                 null, null, new BoundingBox(-100, 0, 900, 100, 127, 1100));
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            pm = ProtocolLibrary.getProtocolManager();
+        });
     }
 
     public static GunBattleGame getInstance() {
