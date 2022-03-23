@@ -83,7 +83,7 @@ public class GunBattleGame extends Game implements Listener {
             }
         }, 1, 1);
         initGame(plugin, "GunBattle","§a枪械乱斗", 0, null, null, null,
-                null, null, new BoundingBox(-16, 64, 1966, 15, 88, 2017));
+                null, null, new BoundingBox(-300, 64, 1700, 300, 88, 2300));
         Bukkit.getScheduler().runTask(plugin, () -> {
             pm = ProtocolLibrary.getProtocolManager();
         });
