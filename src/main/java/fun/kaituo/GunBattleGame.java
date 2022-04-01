@@ -1,9 +1,10 @@
-package tech.yfshadaow;
+package fun.kaituo;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
+import fun.kaituo.event.PlayerChangeGameEvent;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import static tech.yfshadaow.GameUtils.world;
+import static fun.kaituo.GameUtils.world;
 
 public class GunBattleGame extends Game implements Listener {
     private static final GunBattleGame instance = new GunBattleGame((GunBattle) Bukkit.getPluginManager().getPlugin("GunBattle"));
@@ -82,8 +83,8 @@ public class GunBattleGame extends Game implements Listener {
                 tempVector.put(p, currentLoc);
             }
         }, 1, 1);
-        initGame(plugin, "GunBattle","§a枪械乱斗", 0, null, null, null,
-                null, null, new BoundingBox(-300, 64, 1700, 300, 88, 2300));
+        initializeGame(plugin, "GunBattle","§a枪械乱斗", new Location(world, -3,58,1994),
+                new BoundingBox(-300, 64, 1700, 300, 88, 2300));
         Bukkit.getScheduler().runTask(plugin, () -> {
             pm = ProtocolLibrary.getProtocolManager();
         });
@@ -638,7 +639,7 @@ public class GunBattleGame extends Game implements Listener {
 
 
     @Override
-    protected void initGameRunnable() {
+    protected void initializeGameRunnable() {
         gameRunnable = () -> {
             Bukkit.getPluginManager().registerEvents(this, plugin);
         };
