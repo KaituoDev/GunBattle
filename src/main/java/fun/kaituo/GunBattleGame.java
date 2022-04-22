@@ -20,6 +20,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
@@ -37,6 +38,7 @@ public class GunBattleGame extends Game implements Listener {
     private static final GunBattleGame instance = new GunBattleGame((GunBattle) Bukkit.getPluginManager().getPlugin("GunBattle"));
     Scoreboard gunBattle;
     Scoreboard scoreboard;
+    Team team;
     HashMap<Player, Long> timeMap;
     HashMap<Player, Boolean> isReloaded;
     HashMap<Player, Integer> remainingAmmo;
@@ -54,6 +56,9 @@ public class GunBattleGame extends Game implements Listener {
         players = plugin.players;
         gunBattle = Bukkit.getScoreboardManager().getNewScoreboard();
         scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        team = gunBattle.registerNewTeam("gunBattle");
+        team.setAllowFriendlyFire(true);
+        team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
         gunBattle.registerNewObjective("gunBattle", "dummy", "枪械乱斗击败榜");
         gunBattle.getObjective("gunBattle").setDisplaySlot(DisplaySlot.SIDEBAR);
         timeMap = new HashMap<>();
@@ -428,6 +433,19 @@ public class GunBattleGame extends Game implements Listener {
     }
 
     @EventHandler
+    public void preventFriendlyFire(EntityDamageByEntityEvent edbee) {
+        if (!(edbee.getEntity() instanceof Player)) {
+            return;
+        }
+        if (!(edbee.getDamager() instanceof Player)) {
+            return;
+        }
+        if (checkSameTeam((Player) edbee.getDamager(), (Player) edbee.getEntity())) {
+            edbee.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void reduceAttackRange(EntityDamageByEntityEvent edbee) {
         if (!edbee.getDamager().getType().equals(EntityType.PLAYER)) {
             return;
@@ -614,10 +632,12 @@ public class GunBattleGame extends Game implements Listener {
         } else if (x == -3 && y == 58 && z == 1989) {
             players.add(pie.getPlayer());
             pie.getPlayer().setScoreboard(gunBattle);
+            team.addPlayer(pie.getPlayer());
             pie.getPlayer().setMaximumNoDamageTicks(0);
         } else if (x == 2 && y == 58 && z == 1994) {
             players.add(pie.getPlayer());
             pie.getPlayer().setScoreboard(gunBattle);
+            team.addPlayer(pie.getPlayer());
             pie.getPlayer().setMaximumNoDamageTicks(0);
         }
     }
