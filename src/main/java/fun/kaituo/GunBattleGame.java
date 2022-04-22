@@ -437,11 +437,16 @@ public class GunBattleGame extends Game implements Listener {
         if (!(edbee.getEntity() instanceof Player)) {
             return;
         }
-        if (!(edbee.getDamager() instanceof Player)) {
-            return;
-        }
-        if (checkSameTeam((Player) edbee.getDamager(), (Player) edbee.getEntity())) {
-            edbee.setCancelled(true);
+        if (edbee.getDamager() instanceof Player) {
+            if (checkSameTeam((Player) edbee.getDamager(), (Player) edbee.getEntity())) {
+                edbee.setCancelled(true);
+            }
+        } else if (edbee.getDamager() instanceof Arrow) {
+            if (((Arrow) edbee.getDamager()).getShooter() instanceof Player) {
+                if (checkSameTeam((Player) ((Arrow) edbee.getDamager()).getShooter(), (Player) edbee.getEntity())) {
+                    edbee.setCancelled(true);
+                }
+            }
         }
     }
 
