@@ -1,9 +1,8 @@
-package fun.kaituo;
+package fun.kaituo.gunbattle;
 
 
-import fun.kaituo.event.PlayerChangeGameEvent;
+import fun.kaituo.gameutils.GameUtils;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -11,9 +10,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.List;
 
-import static fun.kaituo.GameUtils.*;
 
 public class GunBattle extends JavaPlugin {
+    private GameUtils gameUtils;
     List<Player> players = new ArrayList<>();
 
     public static GunBattleGame getGameInstance() {
@@ -21,19 +20,18 @@ public class GunBattle extends JavaPlugin {
     }
 
     public void onEnable() {
-        registerGame(getGameInstance());
-        GunBattleGame.getInstance().startGame();
+        gameUtils = (GameUtils) Bukkit.getPluginManager().getPlugin("GameUtils");
+        gameUtils.registerGame(getGameInstance());
     }
 
     public void onDisable() {
         Bukkit.getScheduler().cancelTasks(this);
         HandlerList.unregisterAll(this);
-        if (players.size() > 0) {
-            for (Player p : players) {
-                p.teleport(new Location(world, 0.5, 89.0, 0.5));
-                Bukkit.getPluginManager().callEvent(new PlayerChangeGameEvent(p, getGameInstance(), null));
+        for (Player p: Bukkit.getOnlinePlayers()) {
+            if (gameUtils.getPlayerGame(p) == getGameInstance()) {
+                Bukkit.dispatchCommand(p, "join Lobby");
             }
         }
-        unregisterGame(getGameInstance());
+        gameUtils.unregisterGame(getGameInstance());
     }
 }

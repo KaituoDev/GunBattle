@@ -1,10 +1,10 @@
-package fun.kaituo;
+package fun.kaituo.gunbattle;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
-import fun.kaituo.event.PlayerChangeGameEvent;
+import fun.kaituo.gameutils.Game;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
@@ -21,7 +21,6 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
-import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -31,8 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-
-import static fun.kaituo.GameUtils.world;
 
 public class GunBattleGame extends Game implements Listener {
     private static final GunBattleGame instance = new GunBattleGame((GunBattle) Bukkit.getPluginManager().getPlugin("GunBattle"));
@@ -88,10 +85,10 @@ public class GunBattleGame extends Game implements Listener {
                 tempVector.put(p, currentLoc);
             }
         }, 1, 1);
-        initializeGame(plugin, "GunBattle","§a枪械乱斗", new Location(world, -3,58,1994),
-                new BoundingBox(-300, 64, 1700, 300, 88, 2300));
+        initializeGame(plugin, "GunBattle","§a枪械乱斗", new Location(world, -2.5,58,1994.5, -135, 0));
         Bukkit.getScheduler().runTask(plugin, () -> {
             pm = ProtocolLibrary.getProtocolManager();
+            Bukkit.getPluginManager().registerEvents(this, plugin);
         });
     }
 
@@ -326,11 +323,6 @@ public class GunBattleGame extends Game implements Listener {
                 }
             }
         }
-    }
-
-    @EventHandler
-    public void onPlayerChangeGame(PlayerChangeGameEvent pcge) {
-        players.remove(pcge.getPlayer());
     }
 
     @EventHandler
@@ -663,20 +655,26 @@ public class GunBattleGame extends Game implements Listener {
     }
 
 
-    @Override
-    protected void initializeGameRunnable() {
-        gameRunnable = () -> {
-            Bukkit.getPluginManager().registerEvents(this, plugin);
-        };
-    }
 
     @Override
-    protected void savePlayerQuitData(Player p) throws IOException {
+    protected void quit(Player p) throws IOException {
         players.remove(p);
     }
 
     @Override
-    protected void rejoin(Player player) {
+    protected boolean rejoin(Player player) {
+        return false;
+    }
+
+    @Override
+    protected boolean join(Player player) {
+        player.setBedSpawnLocation(hubLocation, true);
+        player.teleport(hubLocation);
+        return true;
+    }
+
+    @Override
+    protected void forceStop() {
 
     }
 }
