@@ -7,14 +7,34 @@ import com.comphenix.protocol.events.PacketContainer;
 import fun.kaituo.gameutils.Game;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.*;
-import org.bukkit.entity.*;
+import org.bukkit.Bukkit;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
+import org.bukkit.entity.Arrow;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.*;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.*;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.DisplaySlot;
@@ -24,7 +44,6 @@ import org.bukkit.scoreboard.Team;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,12 +55,12 @@ public class GunBattleGame extends Game implements Listener {
     Scoreboard gunBattle;
     Scoreboard scoreboard;
     Team team;
-    HashMap<Player, Long> timeMap;
-    HashMap<Player, Boolean> isReloaded;
-    HashMap<Player, Integer> remainingAmmo;
-    HashMap<Player, Long> timeMap2;
-    HashMap<Player, Boolean> isReloaded2;
-    HashMap<Player, Integer> remainingAmmo2;
+    HashMap<Player, Long> rifleTimeMap;
+    HashMap<Player, Boolean> isRifleReloaded;
+    HashMap<Player, Integer> remainingRifleAmmo;
+    HashMap<Player, Long> sniperTimeMap;
+    HashMap<Player, Boolean> isSniperReloaded;
+    HashMap<Player, Integer> remainingSniperAmmo;
     HashMap<Player, Vector> vectorMap;
     HashMap<Player, Vector> tempVector;
     ItemStack arrow;
@@ -58,22 +77,22 @@ public class GunBattleGame extends Game implements Listener {
         team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
         gunBattle.registerNewObjective("gunBattle", "dummy", "枪械乱斗击败榜");
         gunBattle.getObjective("gunBattle").setDisplaySlot(DisplaySlot.SIDEBAR);
-        timeMap = new HashMap<>();
-        isReloaded = new HashMap<>();
-        remainingAmmo = new HashMap<>();
-        timeMap2 = new HashMap<>();
-        isReloaded2 = new HashMap<>();
-        remainingAmmo2 = new HashMap<>();
+        rifleTimeMap = new HashMap<>();
+        isRifleReloaded = new HashMap<>();
+        remainingRifleAmmo = new HashMap<>();
+        sniperTimeMap = new HashMap<>();
+        isSniperReloaded = new HashMap<>();
+        remainingSniperAmmo = new HashMap<>();
         vectorMap = new HashMap<>();
         tempVector = new HashMap<>();
         arrow = new ItemStack(Material.ARROW, 1);
         for (Player p : Bukkit.getOnlinePlayers()) {
-            timeMap.put(p, 0l);
-            isReloaded.put(p, true);
-            remainingAmmo.put(p, 30);
-            timeMap2.put(p, 0l);
-            isReloaded2.put(p, true);
-            remainingAmmo2.put(p, 10);
+            rifleTimeMap.put(p, 0l);
+            isRifleReloaded.put(p, true);
+            remainingRifleAmmo.put(p, 30);
+            sniperTimeMap.put(p, 0l);
+            isSniperReloaded.put(p, true);
+            remainingSniperAmmo.put(p, 10);
         }
         Bukkit.getScheduler().scheduleAsyncRepeatingTask(plugin, () -> {
             for (Player p : players) {
@@ -100,11 +119,11 @@ public class GunBattleGame extends Game implements Listener {
         return e -> !e.equals(p) && e instanceof Player;
     }
 
-    public void reloadAmmo2(Player p) {
-        if (!isReloaded2.get(p)) {
+    public void reloadSniperAmmo(Player p) {
+        if (!isSniperReloaded.get(p)) {
             return;
         }
-        if (remainingAmmo2.get(p) == 10) {
+        if (remainingSniperAmmo.get(p) == 10) {
             p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§a§l弹匣已满！"));
             return;
         }
@@ -125,33 +144,33 @@ public class GunBattleGame extends Game implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             world.playSound(p.getLocation(), Sound.BLOCK_CHAIN_STEP, SoundCategory.PLAYERS, 1f, 0.7f);
         }, 72);
-        isReloaded2.put(p, false);
+        isSniperReloaded.put(p, false);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             int ammo = 0;
-            int remain = remainingAmmo2.get(p);
+            int remain = remainingSniperAmmo.get(p);
             for (Map.Entry e : p.getInventory().all(Material.FIREWORK_STAR).entrySet()) {
                 ammo += ((ItemStack) e.getValue()).getAmount();
             }
             if (ammo + remain < 10) {
                 removeItem(p, Material.FIREWORK_STAR, ammo);
-                remainingAmmo2.put(p, ammo + remain);
+                remainingSniperAmmo.put(p, ammo + remain);
                 p.getInventory().getItem(1).setAmount(ammo + remain);
 
             } else {
                 removeItem(p, Material.FIREWORK_STAR, 10 - remain);
-                remainingAmmo2.put(p, 10);
+                remainingSniperAmmo.put(p, 10);
                 p.getInventory().getItem(1).setAmount(10);
             }
-            isReloaded2.put(p, true);
+            isSniperReloaded.put(p, true);
             p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§e§l装弹完成"));
         }, 80);
     }
 
-    public void reloadAmmo(Player p) {
-        if (!isReloaded.get(p)) {
+    public void reloadRifleAmmo(Player p) {
+        if (!isRifleReloaded.get(p)) {
             return;
         }
-        if (remainingAmmo.get(p) == 30) {
+        if (remainingRifleAmmo.get(p) == 30) {
             p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§a§l弹匣已满！"));
             return;
         }
@@ -172,23 +191,23 @@ public class GunBattleGame extends Game implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             world.playSound(p.getLocation(), Sound.BLOCK_CHAIN_HIT, SoundCategory.PLAYERS, 1f, 0.7f);
         }, 44);
-        isReloaded.put(p, false);
+        isRifleReloaded.put(p, false);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             int ammo = 0;
-            int remain = remainingAmmo.get(p);
+            int remain = remainingRifleAmmo.get(p);
             for (Map.Entry e : p.getInventory().all(Material.ARROW).entrySet()) {
                 ammo += ((ItemStack) e.getValue()).getAmount();
             }
             if (ammo + remain < 30) {
                 removeItem(p, Material.ARROW, ammo);
-                remainingAmmo.put(p, ammo + remain);
+                remainingRifleAmmo.put(p, ammo + remain);
                 p.getInventory().getItem(0).setAmount(ammo + remain);
             } else {
                 removeItem(p, Material.ARROW, 30 - remain);
-                remainingAmmo.put(p, 30);
+                remainingRifleAmmo.put(p, 30);
                 p.getInventory().getItem(0).setAmount(30);
             }
-            isReloaded.put(p, true);
+            isRifleReloaded.put(p, true);
             p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§e§l装弹完成"));
         }, 60);
     }
@@ -202,22 +221,22 @@ public class GunBattleGame extends Game implements Listener {
         } else return scoreboard.getPlayerTeam(a).equals(scoreboard.getPlayerTeam(b));
     }
 
-    public void shootGun2(Player p) {
-        if (getTime(world) - timeMap2.get(p) >= 50) {
-            if (!isReloaded2.get(p)) {
+    public void shootSniper(Player p) {
+        if (getTime(world) - sniperTimeMap.get(p) >= 50) {
+            if (!isSniperReloaded.get(p)) {
                 return;
             }
-            if (remainingAmmo2.get(p) == 0) {
-                reloadAmmo2(p);
+            if (remainingSniperAmmo.get(p) == 0) {
+                reloadSniperAmmo(p);
                 return;
-            } else if (remainingAmmo2.get(p) == 1) {
-                reloadAmmo2(p);
+            } else if (remainingSniperAmmo.get(p) == 1) {
+                reloadSniperAmmo(p);
             }
-            remainingAmmo2.put(p, remainingAmmo2.get(p) - 1);
-            if (remainingAmmo2.get(p) == 0) {
+            remainingSniperAmmo.put(p, remainingSniperAmmo.get(p) - 1);
+            if (remainingSniperAmmo.get(p) == 0) {
                 p.getInventory().getItem(1).setAmount(1);
             } else {
-                p.getInventory().getItem(1).setAmount(remainingAmmo2.get(p));
+                p.getInventory().getItem(1).setAmount(remainingSniperAmmo.get(p));
             }
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 world.playSound(p.getLocation(), Sound.BLOCK_CHAIN_STEP, SoundCategory.PLAYERS, 1f, 0.7f);
@@ -225,7 +244,7 @@ public class GunBattleGame extends Game implements Listener {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 world.playSound(p.getLocation(), Sound.BLOCK_CHAIN_HIT, SoundCategory.PLAYERS, 1f, 0.7f);
             }, 36);
-            int remain = remainingAmmo2.get(p);
+            int remain = remainingSniperAmmo.get(p);
             String color = "";
             if (remain <= 2) {
                 color = "§c";
@@ -238,9 +257,9 @@ public class GunBattleGame extends Game implements Listener {
             } else {
                 color = "§2";
             }
-            p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(color + "§l" + remainingAmmo2.get(p) + "§f§l / §6§l10"));
+            p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(color + "§l" + remainingSniperAmmo.get(p) + "§f§l / §6§l10"));
             world.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 0.8f, 2);
-            timeMap2.put(p, getTime(world));
+            sniperTimeMap.put(p, getTime(world));
             Projectile projectile = p.launchProjectile(Arrow.class, p.getEyeLocation().getDirection());
             projectile.setSilent(true);
             PacketContainer removeArrow = pm.createPacket(PacketType.Play.Server.ENTITY_DESTROY);
@@ -258,24 +277,24 @@ public class GunBattleGame extends Game implements Listener {
         }
     }
 
-    public void shootGun(Player p) {
-        if (getTime(world) - timeMap.get(p) >= 1) {
-            if (!isReloaded.get(p)) {
+    public void shootRifle(Player p) {
+        if (getTime(world) - rifleTimeMap.get(p) >= 1) {
+            if (!isRifleReloaded.get(p)) {
                 return;
             }
-            if (remainingAmmo.get(p) == 0) {
-                reloadAmmo(p);
+            if (remainingRifleAmmo.get(p) == 0) {
+                reloadRifleAmmo(p);
                 return;
-            } else if (remainingAmmo.get(p) == 1) {
-                reloadAmmo(p);
+            } else if (remainingRifleAmmo.get(p) == 1) {
+                reloadRifleAmmo(p);
             }
-            remainingAmmo.put(p, remainingAmmo.get(p) - 1);
-            if (remainingAmmo.get(p) == 0) {
+            remainingRifleAmmo.put(p, remainingRifleAmmo.get(p) - 1);
+            if (remainingRifleAmmo.get(p) == 0) {
                 p.getInventory().getItem(0).setAmount(1);
             } else {
-                p.getInventory().getItem(0).setAmount(remainingAmmo.get(p));
+                p.getInventory().getItem(0).setAmount(remainingRifleAmmo.get(p));
             }
-            int remain = remainingAmmo.get(p);
+            int remain = remainingRifleAmmo.get(p);
             String color = "";
             if (remain <= 5) {
                 color = "§c";
@@ -290,7 +309,7 @@ public class GunBattleGame extends Game implements Listener {
             }
             p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(color + "§l" + remain + " §f§l/ §6§l30"));
             world.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 0.4f, 2);
-            timeMap.put(p, getTime(world));
+            rifleTimeMap.put(p, getTime(world));
 
             /*
             PacketContainer changeRotation = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_LOOK);
@@ -378,12 +397,12 @@ public class GunBattleGame extends Game implements Listener {
 
     @EventHandler
     public void initializeAmmo(PlayerJoinEvent pje) {
-        timeMap.put(pje.getPlayer(), 0l);
-        isReloaded.put(pje.getPlayer(), true);
-        remainingAmmo.put(pje.getPlayer(), 30);
-        timeMap2.put(pje.getPlayer(), 0l);
-        isReloaded2.put(pje.getPlayer(), true);
-        remainingAmmo2.put(pje.getPlayer(), 10);
+        rifleTimeMap.put(pje.getPlayer(), 0l);
+        isRifleReloaded.put(pje.getPlayer(), true);
+        remainingRifleAmmo.put(pje.getPlayer(), 30);
+        sniperTimeMap.put(pje.getPlayer(), 0l);
+        isSniperReloaded.put(pje.getPlayer(), true);
+        remainingSniperAmmo.put(pje.getPlayer(), 10);
     }
 
     @EventHandler
@@ -396,18 +415,18 @@ public class GunBattleGame extends Game implements Listener {
             return;
         }
         if (p.getInventory().getItemInMainHand().getType().equals(Material.SALMON)) {
-            shootGun(p);
+            shootRifle(p);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                shootGun(p);
+                shootRifle(p);
             }, 0);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                shootGun(p);
+                shootRifle(p);
             }, 1);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                shootGun(p);
+                shootRifle(p);
             }, 2);
         } else if (p.getInventory().getItemInMainHand().getType().equals(Material.COD)) {
-            shootGun2(p);
+            shootSniper(p);
         }
     }
 
@@ -465,9 +484,9 @@ public class GunBattleGame extends Game implements Listener {
         }
         pdie.setCancelled(true);
         if (pdie.getItemDrop().getItemStack().getType().equals(Material.SALMON)) {
-            reloadAmmo(pdie.getPlayer());
+            reloadRifleAmmo(pdie.getPlayer());
         } else if (pdie.getItemDrop().getItemStack().getType().equals(Material.COD)) {
-            reloadAmmo2(pdie.getPlayer());
+            reloadSniperAmmo(pdie.getPlayer());
         }
     }
 
@@ -585,10 +604,10 @@ public class GunBattleGame extends Game implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent pde) {
-        remainingAmmo.put(pde.getEntity(), 30);
-        isReloaded.put(pde.getEntity(), true);
-        remainingAmmo2.put(pde.getEntity(), 10);
-        isReloaded2.put(pde.getEntity(), true);
+        remainingRifleAmmo.put(pde.getEntity(), 30);
+        isRifleReloaded.put(pde.getEntity(), true);
+        remainingSniperAmmo.put(pde.getEntity(), 10);
+        isSniperReloaded.put(pde.getEntity(), true);
         Player player = pde.getEntity();
         Entity killer = pde.getEntity().getKiller();
         if (!(players.contains(player))) {
@@ -657,8 +676,8 @@ public class GunBattleGame extends Game implements Listener {
 
 
     @Override
-    protected void quit(Player p) throws IOException {
-        players.remove(p);
+    protected void quit(Player p) {
+        players.removeIf(player -> p.getUniqueId().equals(player.getUniqueId()));
     }
 
     @Override

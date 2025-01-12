@@ -1,6 +1,6 @@
 api-version: 1.13
 name: GunBattle
 main: fun.kaituo.gunbattle.GunBattle
-version: 1.1
+version: 1.2
 author: YFshadaow
 depend: [GameUtils,ProtocolLib]
