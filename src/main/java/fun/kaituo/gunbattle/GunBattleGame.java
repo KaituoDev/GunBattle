@@ -5,16 +5,17 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
 import fun.kaituo.gameutils.Game;
+import io.papermc.lib.PaperLib;
+import io.papermc.lib.environments.PaperEnvironment;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.Bukkit;
-import org.bukkit.FluidCollisionMode;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import org.bukkit.*;
+import org.bukkit.block.*;
+import org.bukkit.block.data.Ageable;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Fire;
+import org.bukkit.block.structure.Mirror;
+import org.bukkit.block.structure.StructureRotation;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -36,18 +37,19 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+import scala.concurrent.impl.FutureConvertersImpl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class GunBattleGame extends Game implements Listener {
@@ -358,8 +360,8 @@ public class GunBattleGame extends Game implements Listener {
             if (!(players.contains(pre.getPlayer()))) {
                 return;
             }
-            ItemStack item1 = p.getInventory().getItem(0);
-            ItemStack item2 = p.getInventory().getItem(1);
+            ItemStack item1 = p.getInventory().getItem(0); //第一格物品栏 (步枪)
+            ItemStack item2 = p.getInventory().getItem(1); //第二格物品栏 (大狙)
             if (item1 != null) {
                 if (item1.getType().equals(Material.SALMON)) {
                     item1.setAmount(30);
@@ -380,8 +382,8 @@ public class GunBattleGame extends Game implements Listener {
             if (!(players.contains(pte.getPlayer()))) {
                 return;
             }
-            ItemStack item1 = p.getInventory().getItem(0);
-            ItemStack item2 = p.getInventory().getItem(1);
+            ItemStack item1 = p.getInventory().getItem(0); //第一格物品栏 (步枪)
+            ItemStack item2 = p.getInventory().getItem(1); //第二格物品栏 (大狙)
             if (item1 != null) {
                 if (item1.getType().equals(Material.SALMON)) {
                     item1.setAmount(30);
@@ -438,7 +440,7 @@ public class GunBattleGame extends Game implements Listener {
         if (!ede.getEntity().getType().equals(EntityType.PLAYER)) {
             return;
         }
-        if ((((Player) ede.getEntity()).hasPotionEffect(PotionEffectType.DAMAGE_RESISTANCE))) {
+        if ((((Player) ede.getEntity()).hasPotionEffect(PotionEffectType.WEAKNESS))) {
             ede.setCancelled(true);
         }
     }
@@ -491,41 +493,62 @@ public class GunBattleGame extends Game implements Listener {
     }
 
     @EventHandler
-    public void onProjectileLaunch(ProjectileLaunchEvent ple) {
+    public void onProjectileLaunch(ProjectileLaunchEvent ple) { //检测玩家发射投掷物
         if (ple.getEntity().getShooter() instanceof Player) {
             Player p = (Player) ple.getEntity().getShooter();
-            if (!(players.contains(p))) {
+            if (!(players.contains(p))) { //射手不在玩家列表内
                 return;
             }
             if ((ple.getEntity().getType().equals(EntityType.ARROW))) {
                 Vector v = ple.getEntity().getVelocity().clone();
                 Vector velocity = vectorMap.get(p).clone();
-                v.add(velocity.multiply(5));//这里是偏移量
+                v.add(velocity.multiply(5)); //偏移量
                 v.multiply(64);
                 ple.getEntity().setVelocity(v);
                 world.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 0.8f, 2);
             } else if ((ple.getEntity().getType().equals(EntityType.SNOWBALL))) {
                 ple.getEntity().setVelocity(ple.getEntity().getVelocity().multiply(0.5));
-                ple.getEntity().setCustomName(((Player) ple.getEntity().getShooter()).getName());
+                switch (((Player) ple.getEntity().getShooter()).getInventory().getHeldItemSlot()){
+                    case 3: // 第四栏：手榴弹
+                        ple.getEntity().setCustomName("Frag");
+                        break;
+                    case 4: // 第五栏：燃烧弹
+                        ple.getEntity().setCustomName("MolotovCocktail");
+                        break;
+                    case 5: // 第六栏：闪光弹
+                        ple.getEntity().setCustomName("Flashbang");
+                        break;
+                    case 6: // 第七栏：烟雾弹
+                        ple.getEntity().setCustomName("SmokeGrenade");
+                        break;
+                }
             }
         }
 
     }
 
     @EventHandler
-    public void onProjectileHit(ProjectileHitEvent phe) {
+    public void onProjectileHit(ProjectileHitEvent phe) { // 实现烟、火、雷、闪的功能
+
         if (!((phe.getEntity().getShooter()) instanceof Entity)) {
             return;
-        }//不是实体
+        } //不是实体
+
+        if (phe.getEntity().getCustomName() == null){
+            return;
+        } //道具没有客制化标签
+
         Entity shooter = (Entity) phe.getEntity().getShooter();
         if (!(players.contains(shooter))) {
             return;
-        }//不在里
+        } //攻击者不在玩家列表里
+
         if (phe.getHitBlock() != null) {
             if (!phe.getHitBlock().getType().equals(Material.WATER)) {
                 phe.getEntity().remove();
             }
-        }//消除箭
+        } //清除丢进水中的道具
+
         Location l;
         if (phe.getHitBlock() != null) {
             l = phe.getHitBlock().getLocation();
@@ -569,13 +592,47 @@ public class GunBattleGame extends Game implements Listener {
         } else {
             l = phe.getHitEntity().getLocation();
             l.setY(l.getY() + 1.8);
-        }
+        } //设置功能实现目标偏移
+
         if (l.getY() < 64) {
             return;
-        } //大厅里面
-        if (phe.getEntity().getType().equals(EntityType.SNOWBALL)) {
-            world.createExplosion(l, 3f, false, false, (Entity) phe.getEntity().getShooter());
-            world.spawnParticle(Particle.EXPLOSION_LARGE, l, 1);
+        } //排除在大厅内使用的道具
+
+        int x = (int) l.getX();
+        int y = (int) l.getY();
+        int z = (int) l.getZ();
+        String ProtectionLocationCMD = (x-4) + " " + (y-4) + " " + (z-4) + " " + (x+4) + " " + (y+4) + " " + (z+4);
+        switch (Objects.requireNonNull(phe.getEntity().getCustomName())) {
+            case "Frag": //手榴弹
+                world.createExplosion(l, 3f, false, false, (Entity) phe.getEntity().getShooter());
+                world.spawnParticle(Particle.EXPLOSION, l, 1);
+                break;
+            case "MolotovCocktail": //燃烧瓶
+                String FireLocationCMD = (x-2) + " " + (y-1) + " " + (z-2) + " " + (x+2) + " " + (y+1) + " " + (z+2);
+                Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+FireLocationCMD+" minecraft:fire replace minecraft:air");
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+FireLocationCMD+" minecraft:air replace minecraft:fire");
+                    Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+ProtectionLocationCMD+" minecraft:dirt_path replace minecraft:dirt");
+                }, 100);
+                break;
+            case "Flashbang": //闪光弹
+                Player AimPlayer;
+                for(Entity aim : world.getNearbyEntities(l,3,3,3)) {
+                    if (aim.getType().equals(EntityType.PLAYER)) {
+                        AimPlayer = (Player) aim;
+                        AimPlayer.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS,100,0));
+                        AimPlayer.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS,150,0));
+                    }
+                }
+                break;
+            case "SmokeGrenade": //烟雾弹
+                String SmokeLocationCMD = (x-3) + " " + (y-3) + " " + (z-3) + " " + (x+3) + " " + (y+3) + " " + (z+3);
+                Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+SmokeLocationCMD+" minecraft:dead_brain_coral[waterlogged=false] replace minecraft:air");
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+SmokeLocationCMD+" minecraft:air replace minecraft:dead_brain_coral");
+                    Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+ProtectionLocationCMD+" minecraft:dirt_path replace minecraft:dirt");
+                }, 100);
+                break;
         }
     }
 
