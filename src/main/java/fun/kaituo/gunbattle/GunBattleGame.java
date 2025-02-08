@@ -5,17 +5,9 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
 import fun.kaituo.gameutils.Game;
-import io.papermc.lib.PaperLib;
-import io.papermc.lib.environments.PaperEnvironment;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
-import org.bukkit.block.*;
-import org.bukkit.block.data.Ageable;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.type.Fire;
-import org.bukkit.block.structure.Mirror;
-import org.bukkit.block.structure.StructureRotation;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -37,17 +29,14 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-import scala.concurrent.impl.FutureConvertersImpl;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -604,8 +593,12 @@ public class GunBattleGame extends Game implements Listener {
         String ProtectionLocationCMD = (x-4) + " " + (y-4) + " " + (z-4) + " " + (x+4) + " " + (y+4) + " " + (z+4);
         switch (Objects.requireNonNull(phe.getEntity().getCustomName())) {
             case "Frag": //手榴弹
+                String ClearSmokeLocationCMD = (x-2) + " " + (y-2) + " " + (z-2) + " " + (x+2) + " " + (y+2) + " " + (z+2);
+                String ClearDirtLocationCMD = (x-3) + " " + (y-3) + " " + (z-3) + " " + (x+3) + " " + (y+3) + " " + (z+3);
                 world.createExplosion(l, 3f, false, false, (Entity) phe.getEntity().getShooter());
                 world.spawnParticle(Particle.EXPLOSION, l, 1);
+                Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+ClearSmokeLocationCMD+" minecraft:air replace minecraft:dead_brain_coral");
+                Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "fill "+ClearDirtLocationCMD+" minecraft:dirt_path replace minecraft:dirt");
                 break;
             case "MolotovCocktail": //燃烧瓶
                 String FireLocationCMD = (x-2) + " " + (y-1) + " " + (z-2) + " " + (x+2) + " " + (y+1) + " " + (z+2);
